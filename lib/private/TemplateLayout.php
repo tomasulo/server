@@ -215,6 +215,7 @@ class TemplateLayout extends \OC_Template {
 				\OC::$server->getAppDataDir('css'),
 				\OC::$server->getURLGenerator(),
 				\OC::$server->getConfig(),
+				\OC::$server->getThemingDefaults(),
 				\OC::$SERVERROOT,
 				$cache->createLocal('SCSS')
 			);
