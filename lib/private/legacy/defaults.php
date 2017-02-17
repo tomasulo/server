@@ -289,7 +289,10 @@ class OC_Defaults {
 	/**
 	 * @return array scss variables to overwrite
 	 */
-	public function getThemingVariables() {
+	public function getScssVariables() {
+		if($this->themeExist('getScssVariables')) {
+			return $this->theme->getScssVariables();
+		}
 		return [];
 	}
 
