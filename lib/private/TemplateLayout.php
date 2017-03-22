@@ -57,6 +57,7 @@ class TemplateLayout extends \OC_Template {
 		// yes - should be injected ....
 		$this->config = \OC::$server->getConfig();
 
+
 		// Decide which page we show
 		if($renderAs == 'user') {
 			parent::__construct( 'core', 'layout.user' );
@@ -208,17 +209,7 @@ class TemplateLayout extends \OC_Template {
 		$theme = \OC_Util::getTheme();
 
 		if($compileScss) {
-			/** @var \OC\Memcache\Factory $cache */
-			$cache = \OC::$server->query('MemCacheFactory');
-			$SCSSCacher = new SCSSCacher(
-				\OC::$server->getLogger(),
-				\OC::$server->getAppDataDir('css'),
-				\OC::$server->getURLGenerator(),
-				\OC::$server->getConfig(),
-				\OC::$server->getThemingDefaults(),
-				\OC::$SERVERROOT,
-				$cache->createLocal('SCSS')
-			);
+			$SCSSCacher = \OC::$server->query(SCSSCacher::class);
 		} else {
 			$SCSSCacher = null;
 		}
@@ -228,7 +219,8 @@ class TemplateLayout extends \OC_Template {
 			$theme,
 			array( \OC::$SERVERROOT => \OC::$WEBROOT ),
 			array( \OC::$SERVERROOT => \OC::$WEBROOT ),
-			$SCSSCacher);
+			$SCSSCacher
+		);
 		$locator->find($styles);
 		return $locator->getResources();
 	}
