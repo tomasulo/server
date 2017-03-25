@@ -1149,6 +1149,114 @@ class CalDavBackend extends AbstractBackend implements SyncSupport, Subscription
 	}
 
 	/**
+	 * custom Nextcloud search extension for CalDAV
+	 *
+	 * @param string $principalUri
+	 * @param array $filters
+	 * @param integer|null $limit
+	 * @param integer|null $offset
+	 * @return array
+	 */
+	public function calendarSearch($principalUri, array $filters, $limit=null, $offset=null) {
+		$calendars = $this->getCalendarsForUser($principalUri);
+		$ownCalendars = [];
+		$sharedCalendars = [];
+
+		$uriMapper = [];
+
+		foreach($calendars as $calendar) {
+			if ($calendar['{http://owncloud.org/ns}owner-principal'] === $principalUri) {
+				$ownCalendars[] = $calendar['id'];
+			} else {
+				$sharedCalendars[] = $calendar['id'];
+			}
+			$uriMapper[$calendar['id']] = $calendar['uri'];
+		}
+		if (count($ownCalendars) === 0 && count($sharedCalendars) === 0) {
+			return [];
+		}
+
+		$query = $this->db->getQueryBuilder();
+
+		// Calendar id expressions
+		$calendarExpressions = [];
+		foreach($ownCalendars as $id) {
+			$calendarExpressions[] = $query->expr()
+				->eq('calendarid', $query->createNamedParameter($id));
+		}
+		foreach($sharedCalendars as $id) {
+			$calendarExpressions[] = $query->expr()->andX(
+				$query->expr()->eq('calendarid',
+					$query->createNamedParameter($id)),
+				$query->expr()->eq('classification',
+					$query->createNamedParameter(0))
+			);
+		}
+
+		if (count($calendarExpressions) === 1) {
+			$calExpr = $calendarExpressions[0];
+		} else {
+			$calExpr = call_user_func_array([$query->expr(), 'orX'], $calendarExpressions);
+		}
+
+		// Component expressions
+		$compExpressions = [];
+		foreach($filters['comps'] as $comp) {
+			$compExpressions[] = $query->expr()
+				->eq('componenttype', $query->createNamedParameter($comp));
+		}
+
+		if (count($compExpressions) === 1) {
+			$compExpr = $compExpressions[0];
+		} else {
+			$compExpr = call_user_func_array([$query->expr(), 'orX'], $compExpressions);
+		}
+
+		// property and filter expression
+		$searchTermFilter = $query->expr()->like('calendardata',
+			$query->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search-term']) . '%'));
+
+		$query->select(['calendarid', 'uri', 'calendardata'])
+			->from('calendarobjects')
+			->where($calExpr)
+			->andWhere($compExpr)
+			->andWhere($searchTermFilter);
+
+		$stmt = $query->execute();
+
+		$result = [];
+		while($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+			if (!$this->validateFilterForCalendarSearch($row, $filters)) {
+				continue;
+			}
+
+			$result[] = $uriMapper[$row['calendarid']] . '/' . $row['uri'];
+		}
+
+		return $result;
+	}
+
+	/**
+	 * This method validates if a filter (as passed to calendarSearch) matches
+	 * the given object.
+	 *
+	 * @param array $object
+	 * @param array $filters
+	 * @return bool
+	 */
+	protected function validateFilterForCalendarSearch(array $object, array $filters) {
+		$vObject = Reader::read($object['calendardata']);
+
+		$validator = new Search\CalendarSearchValidator();
+		$result = $validator->validate($vObject, $filters);
+
+		// Destroy circular references so PHP will GC the object.
+		$vObject->destroy();
+
+		return $result;
+	}
+
+	/**
 	 * Searches through all of a users calendars and calendar objects to find
 	 * an object with a specific UID.
 	 *
