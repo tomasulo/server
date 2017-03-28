@@ -162,7 +162,7 @@ class ThemingDefaults extends \OC_Defaults {
 		if(!$backgroundLogo || $file === null) {
 			return $this->urlGenerator->imagePath('core','background.jpg');
 		} else {
-			return $this->urlGenerator->linkToRoute('theming.Theming.getLoginBackground');
+			return $this->urlGenerator->linkToRouteAbsolute('theming.Theming.getLoginBackground');
 		}
 	}
 
