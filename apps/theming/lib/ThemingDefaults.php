@@ -184,12 +184,12 @@ class ThemingDefaults extends \OC_Defaults {
 		$variables['image-login-background'] = "'".$this->getBackground()."'";
 
 		if ($this->config->getAppValue('theming', 'color', null) !== null) {
-			if ($this->util->invertTextColor($this->getMailHeaderColor())) {
+			if ($this->util->invertTextColor($this->getColorPrimary())) {
 				$colorPrimaryText = '#000000';
 			} else {
 				$colorPrimaryText = '#ffffff';
 			}
-			$variables['color-primary'] = $this->getMailHeaderColor();
+			$variables['color-primary'] = $this->getColorPrimary();
 			$variables['color-primary-text'] = $colorPrimaryText;
 		}
 		$cache->set('getScssVariables', $variables);
